@@ -155,7 +155,7 @@ export default function Web3Integration() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6 overflow-y-auto max-h-full">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Web3 & Metaverse Integration</h2>
         <p className="text-muted-foreground mt-2">

@@ -65,7 +65,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
           <h1 className="ml-3 text-xl font-bold text-gray-900 dark:text-white">SocialAI</h1>
         </div>
       </div>
-      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
         <div
           className={cn(
             "flex items-center px-3 py-2 rounded-md text-sm font-medium cursor-pointer",

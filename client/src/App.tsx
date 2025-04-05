@@ -13,6 +13,7 @@ import AiAssistant from "@/pages/ai-assistant";
 import CompetitiveAnalysis from "@/pages/competitive-analysis";
 import Web3Integration from "@/pages/web3-integration";
 import Sidebar from "@/components/layout/sidebar";
+import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import Header from "@/components/layout/header";
 import { useState, Suspense, lazy } from "react";
 
@@ -44,10 +45,13 @@ function App() {
         <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
         <main className="flex-1 flex flex-col overflow-hidden">
           <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-          <Router />
+          <div className="flex-1 overflow-y-auto">
+            <Router />
+          </div>
         </main>
       </div>
       <Toaster />
+      <ScrollToTop />
     </QueryClientProvider>
   );
 }
