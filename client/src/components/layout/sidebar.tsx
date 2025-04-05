@@ -169,6 +169,21 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
           Competitive Analysis
         </div>
 
+        <div
+          className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium cursor-pointer",
+            location === "/web3-integration" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}
+          onClick={() => window.location.href = "/web3-integration"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Web3 Integration
+        </div>
+
         {/* Platform Connections */}
         <div className="pt-2 space-y-1">
           <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">
