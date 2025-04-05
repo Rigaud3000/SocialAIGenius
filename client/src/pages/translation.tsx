@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Helmet } from "react-helmet";
 import TranslationPanel from "@/components/global/translation-panel";
 import WebsiteTranslator from "@/components/global/website-translator";
+import TranslationWidget from "@/components/global/translation-widget";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Languages, Globe, Globe2, Code } from "lucide-react";
+import { Languages, Globe, Globe2, Code, Puzzle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Translation() {
-  const [translationTab, setTranslationTab] = useState<string>("text");
+  const [translationTab, setTranslationTab] = useState<string>("widget");
   
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 lg:p-6 scrollbar-thin scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400">
@@ -26,7 +27,11 @@ export default function Translation() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <Tabs value={translationTab} onValueChange={setTranslationTab} className="w-full">
-              <TabsList className="mb-4 w-full grid grid-cols-2">
+              <TabsList className="mb-4 w-full grid grid-cols-3">
+                <TabsTrigger value="widget" className="flex items-center">
+                  <Puzzle className="h-4 w-4 mr-2" />
+                  Translation Widget
+                </TabsTrigger>
                 <TabsTrigger value="text" className="flex items-center">
                   <Languages className="h-4 w-4 mr-2" />
                   Text Translation
@@ -36,6 +41,10 @@ export default function Translation() {
                   Website Translation
                 </TabsTrigger>
               </TabsList>
+              
+              <TabsContent value="widget">
+                <TranslationWidget />
+              </TabsContent>
               
               <TabsContent value="text">
                 <TranslationPanel />
@@ -48,6 +57,42 @@ export default function Translation() {
           </div>
           
           <div className="space-y-6">
+            {translationTab === "widget" && (
+              <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Puzzle className="mr-2 h-5 w-5 text-primary" />
+                    Website Translation Widget
+                  </CardTitle>
+                  <CardDescription>
+                    One-click solution for multilingual websites
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">Easy Integration</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Add the widget to any website with a single line of code - no technical skills required!
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">100+ Languages</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Instantly translate your website content into over 100 languages using Google's translation engine.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-primary">Customizable Design</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Match the widget to your brand with customizable colors, positions, and language options.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
