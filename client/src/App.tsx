@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import ContentCreator from "@/pages/content-creator";
+import ContentEditor from "@/pages/content-editor";
+import ConnectAccounts from "@/pages/connect-accounts";
 import Scheduler from "@/pages/scheduler";
 import Analytics from "@/pages/analytics";
 import AiAssistant from "@/pages/ai-assistant";
@@ -17,6 +19,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/content-creator" component={ContentCreator} />
+      <Route path="/content-editor" component={ContentEditor} />
+      <Route path="/connect-accounts" component={ConnectAccounts} />
       <Route path="/scheduler" component={Scheduler} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/ai-assistant" component={AiAssistant} />

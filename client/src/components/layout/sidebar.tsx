@@ -76,6 +76,19 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
             Content Creator
           </a>
         </Link>
+        <Link href="/content-editor">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/content-editor" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Multi-Platform Editor
+          </a>
+        </Link>
         <Link href="/scheduler">
           <a className={cn(
             "flex items-center px-3 py-2 rounded-md text-sm font-medium",
@@ -122,7 +135,21 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
             Platform Connections
           </h3>
           
-          {accounts?.map((account: any) => (
+          <Link href="/connect-accounts">
+            <a className={cn(
+              "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+              location === "/connect-accounts" 
+                ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+                : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+            )}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              Connect Accounts
+            </a>
+          </Link>
+          
+          {accounts && Array.isArray(accounts) && accounts.map((account: any) => (
             <a 
               href="#" 
               key={account.id}
@@ -135,7 +162,7 @@ export default function Sidebar({ open, setOpen }: SidebarProps) {
                 {account.platform?.slug === 'linkedin' && <FaLinkedin className="h-5 w-5 text-blue-700" />}
                 {account.platform?.slug === 'youtube' && <FaYoutube className="h-5 w-5 text-red-600" />}
               </div>
-              {account.platform.name}
+              {account.platform?.name}
             </a>
           ))}
         </div>

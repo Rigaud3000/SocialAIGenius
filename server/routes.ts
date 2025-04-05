@@ -172,6 +172,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Delete/disconnect a social account
+  apiRouter.delete("/accounts/:id", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      if (isNaN(accountId)) {
+        return res.status(400).json({ message: "Invalid account ID" });
+      }
+      
+      const success = await storage.disconnectSocialAccount(accountId);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ message: "Account not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to disconnect account" });
+    }
+  });
+  
+  // Refresh account stats
+  apiRouter.put("/accounts/:id/refresh", async (req: Request, res: Response) => {
+    try {
+      const accountId = parseInt(req.params.id);
+      if (isNaN(accountId)) {
+        return res.status(400).json({ message: "Invalid account ID" });
+      }
+      
+      // Get the existing account
+      const account = await storage.getSocialAccount(accountId);
+      if (!account) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      // Generate new, slightly different stats from the existing ones
+      const currentFollowers = account.stats?.followers || Math.floor(Math.random() * 100000);
+      const currentPosts = account.stats?.posts || Math.floor(Math.random() * 1000);
+      
+      // Simulate growth by adding a small percentage
+      const followerIncrease = Math.floor(currentFollowers * (Math.random() * 0.05)); // 0-5% growth
+      const postIncrease = Math.floor(Math.random() * 5); // 0-5 new posts
+      
+      const updatedStats = {
+        followers: currentFollowers + followerIncrease,
+        engagement: (Math.random() * 10).toFixed(1) + "%",
+        growth: (Math.random() * 5).toFixed(1) + "%",
+        posts: currentPosts + postIncrease
+      };
+      
+      // Update the account stats
+      const updatedAccount = await storage.updateSocialAccount(accountId, updatedStats);
+      
+      if (updatedAccount) {
+        res.json(updatedAccount);
+      } else {
+        res.status(404).json({ message: "Account not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to refresh account stats" });
+    }
+  });
+  
   // Get all posts for a user
   apiRouter.get("/posts", async (req: Request, res: Response) => {
     try {
@@ -219,17 +281,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If platforms are specified, create post platforms
       if (req.body.platforms && Array.isArray(req.body.platforms)) {
+        // Check if platform-specific content is provided
+        const platformContents = req.body.platformContents || [];
+        
         await Promise.all(
-          req.body.platforms.map(async (platformId: number) => {
+          req.body.platforms.map(async (platformSlug: string) => {
+            // Get platform by slug
+            const platform = await storage.getPlatformBySlug(platformSlug);
+            if (!platform) return;
+            
             // Get a social account for this platform
             const accounts = await storage.getSocialAccountsByUserId(post.userId);
-            const account = accounts.find(a => a.platformId === platformId);
+            const account = accounts.find(a => a.platformId === platform.id);
             
             if (account) {
+              // Find platform-specific content if available
+              const platformContent = platformContents.find((pc: any) => 
+                pc.platformId === platformSlug
+              );
+              
               await storage.createPostPlatform({
                 postId: post.id,
                 socialAccountId: account.id,
-                platformContent: post.content,
+                platformContent: platformContent?.content || post.content,
                 publishStatus: post.status === 'scheduled' ? 'pending' : 'published',
                 publishedUrl: post.status === 'published' ? `https://example.com/post/${post.id}` : undefined,
                 engagementStats: post.status === 'published' ? { likes: 0, comments: 0, shares: 0 } : undefined
@@ -244,6 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         res.status(400).json({ message: "Invalid post data", errors: error.errors });
       } else {
+        console.error("Post creation error:", error);
         res.status(500).json({ message: "Failed to create post" });
       }
     }
