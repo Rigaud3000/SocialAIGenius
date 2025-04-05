@@ -1,1 +1,10 @@
+services:
+  - type: web
+    name: SocialAIGenius
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: node server/index.ts
+    envVars:
+      - key: NODE_VERSION
+        value: 18
 
