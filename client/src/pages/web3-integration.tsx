@@ -19,6 +19,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Hash, Info, Leaf, Bitcoin, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
+// Import the smart contract interaction component
+import SmartContractInteraction from "@/components/web3/smart-contract-interaction";
+
 // Web3 platforms supported by our application
 const web3Platforms = [
   { 
@@ -165,6 +168,7 @@ export default function Web3Integration() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="nft">NFT Collections</TabsTrigger>
           <TabsTrigger value="post">Post Content</TabsTrigger>
+          <TabsTrigger value="contracts">Smart Contracts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
         
@@ -457,6 +461,20 @@ export default function Web3Integration() {
               </Button>
             </CardFooter>
           </Card>
+        </TabsContent>
+        
+        {/* Smart Contracts Tab */}
+        <TabsContent value="contracts" className="space-y-6">
+          {!walletConnected && (
+            <Alert variant="default" className="bg-amber-50 text-amber-800 border-amber-200">
+              <Info className="h-4 w-4 mr-2" />
+              <AlertDescription>
+                Connect your wallet first to deploy and interact with smart contracts.
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          <SmartContractInteraction />
         </TabsContent>
         
         {/* Analytics Tab */}
