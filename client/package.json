@@ -1,4 +1,6 @@
 {
+  "scripts": {
+    "start": "npx ts-node server/index.ts"
   "name": "socialaigenius-frontend",
   "version": "1.0.0",
   "scripts": {
