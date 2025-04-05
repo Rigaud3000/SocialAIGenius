@@ -12,11 +12,15 @@ import {
   insertAiSuggestionSchema
 } from "@shared/schema";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize OpenAI with environment variables
 const openai = new OpenAI({ 
   apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || "sk-dummy-key" 
 });
+
+// Initialize Google Gemini API
+const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyC5T2TPQoUcyZa992JcffC3OMxYXgkXwus");
 
 // Helper to check if the OpenAI API key is valid and has quota
 async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
@@ -53,6 +57,52 @@ async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: st
     return { 
       valid: false, 
       message: `Error validating OpenAI API key: ${error?.message || "Unknown error"}`
+    };
+  }
+}
+
+// Helper to check if the Gemini API key is valid
+async function checkGeminiApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
+  try {
+    // If Gemini API key is not set, return false
+    if (!process.env.GEMINI_API_KEY && !gemini) {
+      return { valid: false, message: "Gemini API key is not configured" };
+    }
+    
+    // Get a generative model
+    const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
+    
+    // Send a test prompt
+    const result = await model.generateContent("test");
+    const response = await result.response;
+    
+    if (!response) {
+      return { valid: false, message: "Failed to get response from Gemini API" };
+    }
+    
+    return { valid: true };
+  } catch (error: any) {
+    console.error("Gemini API key validation error:", error);
+    
+    // Handle rate limits
+    if (error?.message?.includes('quota') || error?.message?.includes('rate limit')) {
+      return { 
+        valid: false, 
+        message: "Gemini API quota exceeded or rate limited. Please try again later."
+      };
+    }
+    
+    // Handle authentication errors
+    if (error?.message?.includes('API key')) {
+      return { 
+        valid: false, 
+        message: "Invalid Gemini API key. Please check your API key and try again."
+      };
+    }
+    
+    return { 
+      valid: false, 
+      message: `Error validating Gemini API key: ${error?.message || "Unknown error"}`
     };
   }
 }
@@ -252,19 +302,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new AI content
   apiRouter.post("/ai-content", async (req: Request, res: Response) => {
     try {
-      const { prompt, type } = req.body;
+      const { prompt, type, useGemini } = req.body;
       
       if (!prompt) {
         return res.status(400).json({ message: "Prompt is required" });
       }
       
-      // Check OpenAI API key status first
-      const apiStatus = await checkOpenAIApiKeyStatus();
-      if (!apiStatus.valid) {
-        return res.status(429).json({
-          message: apiStatus.message || "OpenAI API key is invalid or has exceeded its quota",
-          error: "API_KEY_ERROR"
-        });
+      // Determine which API to use
+      const useGeminiApi = useGemini === true;
+      
+      if (useGeminiApi) {
+        // Check Gemini API key status
+        const apiStatus = await checkGeminiApiKeyStatus();
+        if (!apiStatus.valid) {
+          return res.status(429).json({
+            message: apiStatus.message || "Gemini API key is invalid or has exceeded its quota",
+            error: "API_KEY_ERROR",
+            provider: "gemini"
+          });
+        }
+      } else {
+        // Check OpenAI API key status
+        const apiStatus = await checkOpenAIApiKeyStatus();
+        if (!apiStatus.valid) {
+          return res.status(429).json({
+            message: apiStatus.message || "OpenAI API key is invalid or has exceeded its quota",
+            error: "API_KEY_ERROR",
+            provider: "openai"
+          });
+        }
       }
       
       // Configure system message based on content type
@@ -290,33 +356,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       let content;
+      
       try {
-        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        const response = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "system",
-              content: systemMessage
-            },
-            {
-              role: "user",
-              content: enhancedPrompt
+        if (useGeminiApi) {
+          // Use Google's Gemini API
+          const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
+          
+          // Build the prompt with system message first
+          const fullPrompt = `${systemMessage}\n\n${enhancedPrompt}\n\nPlease format your response as a JSON object with "title" and "content" fields.`;
+          
+          const result = await model.generateContent(fullPrompt);
+          const response = await result.response;
+          const text = response.text();
+          
+          // Extract JSON from the response
+          // First try to parse the entire text as JSON
+          try {
+            content = JSON.parse(text);
+          } catch (e) {
+            // If that fails, try to extract JSON from the response using regex
+            const jsonMatch = text.match(/({[\s\S]*})/);
+            if (jsonMatch && jsonMatch[1]) {
+              try {
+                content = JSON.parse(jsonMatch[1]);
+              } catch (e2) {
+                // If all parsing attempts fail, create a structured response
+                content = {
+                  title: "Generated Content",
+                  content: text
+                };
+              }
+            } else {
+              // Create a fallback structure if JSON not found
+              content = {
+                title: "Generated Content",
+                content: text
+              };
             }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.7 // Add some creativity but keep it focused
-        });
-        
-        // Parse the JSON response
-        content = JSON.parse(response.choices[0].message.content || '{"title": "", "content": ""}');
+          }
+          
+        } else {
+          // Use OpenAI API
+          // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              {
+                role: "system",
+                content: systemMessage
+              },
+              {
+                role: "user",
+                content: enhancedPrompt
+              }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7 // Add some creativity but keep it focused
+          });
+          
+          // Parse the JSON response
+          content = JSON.parse(response.choices[0].message.content || '{"title": "", "content": ""}');
+        }
       } catch (error: any) {
+        console.error(`${useGeminiApi ? 'Gemini' : 'OpenAI'} API error:`, error);
+        
         // Check if it's a rate limit or quota error
-        if (error?.code === 'insufficient_quota' || error?.status === 429) {
+        if (error?.code === 'insufficient_quota' || error?.status === 429 || 
+            error?.message?.includes('quota') || error?.message?.includes('rate limit')) {
           return res.status(429).json({
-            message: "OpenAI API quota exceeded. Please check your API key billing details or try again later.",
+            message: `${useGeminiApi ? 'Gemini' : 'OpenAI'} API quota exceeded. Please check your API key billing details or try again later.`,
             error: "QUOTA_EXCEEDED",
-            suggestion: "Your API key has reached its usage limit. Consider upgrading your OpenAI plan or waiting until your quota resets."
+            provider: useGeminiApi ? "gemini" : "openai",
+            suggestion: "Your API key has reached its usage limit. Consider upgrading your plan or waiting until your quota resets."
           });
         }
         
@@ -347,10 +458,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("AI content generation error:", error);
       
-      // If it's an OpenAI API-related error, provide a clearer message
+      // If it's an API-related error, provide a clearer message
       if (error?.response?.status === 429 || error?.message?.includes('quota')) {
         return res.status(429).json({
-          message: "OpenAI API quota exceeded. Please check your API key billing details or try again later.",
+          message: `AI API quota exceeded. Please check your API key billing details or try again later.`,
           error: "QUOTA_EXCEEDED"
         });
       }
@@ -442,22 +553,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint to check OpenAI API key status
   apiRouter.get("/ai-api-status", async (req: Request, res: Response) => {
     try {
-      const status = await checkOpenAIApiKeyStatus();
-      if (status.valid) {
-        res.json({ 
-          status: "success", 
-          message: "OpenAI API key is valid and has sufficient quota" 
-        });
+      // Check if we should use Gemini based on query parameter
+      const useGemini = req.query.provider === "gemini" || req.query.useGemini === "true";
+      
+      if (useGemini) {
+        const status = await checkGeminiApiKeyStatus();
+        if (status.valid) {
+          res.json({ 
+            status: "success", 
+            message: "Google Gemini API key is valid and operational",
+            provider: "gemini"
+          });
+        } else {
+          res.status(400).json({
+            status: "error",
+            message: status.message,
+            provider: "gemini"
+          });
+        }
       } else {
-        res.status(400).json({
-          status: "error",
-          message: status.message
-        });
+        const status = await checkOpenAIApiKeyStatus();
+        if (status.valid) {
+          res.json({ 
+            status: "success", 
+            message: "OpenAI API key is valid and has sufficient quota",
+            provider: "openai"
+          });
+        } else {
+          res.status(400).json({
+            status: "error",
+            message: status.message,
+            provider: "openai"
+          });
+        }
       }
     } catch (error: any) {
+      const isGeminiRequest = req.query.provider === "gemini" || req.query.useGemini === "true";
       res.status(500).json({ 
         status: "error", 
-        message: error?.message || "Failed to check OpenAI API status" 
+        message: error?.message || `Failed to check ${isGeminiRequest ? 'Gemini' : 'OpenAI'} API status`,
+        provider: isGeminiRequest ? "gemini" : "openai"
       });
     }
   });

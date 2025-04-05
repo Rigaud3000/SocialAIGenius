@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { Wand2Icon, Calendar as CalendarIcon, Sparkles, Lightbulb, Clock, Check, RefreshCw, Share2, Clipboard as ClipboardIcon } from "lucide-react";
 import { FaFacebook, FaInstagram, FaTwitter, FaLinkedin, FaYoutube } from "react-icons/fa";
@@ -27,6 +29,7 @@ export default function AiAssistant() {
   const [promptTemplate, setPromptTemplate] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
+  const [useGemini, setUseGemini] = useState<boolean>(true); // Default to using Gemini API
 
   // Query to get AI suggestions
   const { data: suggestions, isLoading: suggestionsLoading } = useQuery({
@@ -183,7 +186,8 @@ export default function AiAssistant() {
     
     generateContentMutation.mutate({ 
       prompt: prompt,
-      type: validType
+      type: validType,
+      useGemini // Pass the useGemini flag to use Google Gemini API
     });
   };
 
@@ -396,13 +400,33 @@ export default function AiAssistant() {
                         <ApiStatusAlert 
                           error={
                             (generateContentMutation.error as any)?.message?.includes('quota exceeded')
-                              ? "OpenAI API quota exceeded. Please check your API key billing details or try again later."
-                              : "There was an error connecting to the OpenAI API."
+                              ? `${useGemini ? "Google Gemini" : "OpenAI"} API quota exceeded. Please check your API key billing details or try again later.`
+                              : `There was an error connecting to the ${useGemini ? "Google Gemini" : "OpenAI"} API.`
                           }
                           onRetry={() => generateContentMutation.reset()}
+                          provider={useGemini ? "gemini" : "openai"}
                         />
                       </div>
                     )}
+                    
+                    {/* API Provider Toggle */}
+                    <div className="flex items-center justify-between space-x-2 p-4 border rounded-md bg-gray-50 dark:bg-gray-900">
+                      <div className="space-y-0.5">
+                        <h4 className="text-sm font-medium">AI Provider</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {useGemini ? "Using Google Gemini AI" : "Using OpenAI"}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor="gemini-toggle" className={`text-sm ${!useGemini ? "font-bold" : ""}`}>OpenAI</Label>
+                        <Switch
+                          id="gemini-toggle"
+                          checked={useGemini}
+                          onCheckedChange={setUseGemini}
+                        />
+                        <Label htmlFor="gemini-toggle" className={`text-sm ${useGemini ? "font-bold" : ""}`}>Gemini</Label>
+                      </div>
+                    </div>
                     <div>
                       <div className="flex justify-between mb-2">
                         <label htmlFor="content-type" className="text-sm font-medium">Content Type</label>

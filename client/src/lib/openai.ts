@@ -8,6 +8,7 @@ export interface ContentGenerationRequest {
   platforms?: string[]; // Specific platforms to optimize for
   audience?: string; // Target audience
   keywords?: string[]; // Keywords to include
+  useGemini?: boolean; // Whether to use Google Gemini API instead of OpenAI
 }
 
 export interface AiSuggestion {
@@ -54,7 +55,8 @@ export async function generateContent(request: ContentGenerationRequest): Promis
       
       // Handle rate limiting or quota issues
       if (response.status === 429) {
-        throw new Error(`OpenAI API quota exceeded: ${errorData.message || 'Please try again later or update your API key.'}`);
+        const apiProvider = request.useGemini ? "Google Gemini" : "OpenAI";
+        throw new Error(`${apiProvider} API quota exceeded: ${errorData.message || 'Please try again later or update your API key.'}`);
       }
       
       throw new Error(errorData.message || "Failed to generate content");
@@ -87,7 +89,8 @@ export async function useSuggestion(id: number): Promise<AiSuggestion> {
 export async function generateContentVariations(
   theme: string,
   count: number = 3,
-  type: "trend" | "content" | "timing" = "content"
+  type: "trend" | "content" | "timing" = "content",
+  useGemini: boolean = false
 ): Promise<AiSuggestion[]> {
   // Generate variations one by one
   const variations: AiSuggestion[] = [];
@@ -95,7 +98,8 @@ export async function generateContentVariations(
   for (let i = 0; i < count; i++) {
     const variation = await generateContent({
       prompt: `Generate variation ${i+1} for: ${theme}. Make it unique from other variations.`,
-      type
+      type,
+      useGemini
     });
     
     variations.push(variation);

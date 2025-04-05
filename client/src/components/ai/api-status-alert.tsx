@@ -5,25 +5,37 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export interface ApiStatusAlertProps {
   error?: string;
   onRetry?: () => void;
+  provider?: "openai" | "gemini";
 }
 
-export default function ApiStatusAlert({ error, onRetry }: ApiStatusAlertProps) {
+export default function ApiStatusAlert({ error, onRetry, provider = "openai" }: ApiStatusAlertProps) {
   const { toast } = useToast();
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [apiStatus, setApiStatus] = useState<"success" | "error" | "checking" | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [useGemini, setUseGemini] = useState(provider === "gemini");
+  const [currentProvider, setCurrentProvider] = useState<"openai" | "gemini">(provider);
+  
+  // Show proper provider name in UI
+  const providerName = useGemini ? "Google Gemini" : "OpenAI";
 
-  // Mutation for checking OpenAI API status
+  // Mutation for checking API status
   const checkApiStatusMutation = useMutation({
     mutationFn: async () => {
       setApiStatus("checking");
       setIsCheckingStatus(true);
+      setCurrentProvider(useGemini ? "gemini" : "openai");
+      
       try {
-        const response = await apiRequest("GET", "/api/ai-api-status");
+        // Add query param to specify which provider to check
+        const url = `/api/ai-api-status${useGemini ? '?provider=gemini' : ''}`;
+        const response = await apiRequest("GET", url);
         const data = await response.json();
         return data;
       } catch (error) {
@@ -35,22 +47,22 @@ export default function ApiStatusAlert({ error, onRetry }: ApiStatusAlertProps) 
     onSuccess: (data) => {
       if (data.status === "success") {
         setApiStatus("success");
-        setStatusMessage(data.message || "API is working correctly");
+        setStatusMessage(data.message || `API is working correctly`);
         toast({
           title: "API Check",
-          description: "OpenAI API is working correctly",
+          description: `${providerName} API is working correctly`,
         });
       } else {
         setApiStatus("error");
-        setStatusMessage(data.message || "There was a problem with the OpenAI API");
+        setStatusMessage(data.message || `There was a problem with the ${providerName} API`);
       }
     },
     onError: () => {
       setApiStatus("error");
-      setStatusMessage("Could not check API status. Please try again later.");
+      setStatusMessage(`Could not check ${providerName} API status. Please try again later.`);
       toast({
         title: "API Check Failed",
-        description: "Could not verify API status",
+        description: `Could not verify ${providerName} API status`,
         variant: "destructive",
       });
     },
@@ -66,6 +78,13 @@ export default function ApiStatusAlert({ error, onRetry }: ApiStatusAlertProps) 
     setApiStatus(null);
     setStatusMessage(null);
     if (onRetry) onRetry();
+  };
+  
+  // Toggle between OpenAI and Gemini API
+  const handleToggleProvider = () => {
+    setUseGemini(!useGemini);
+    setApiStatus(null);
+    setStatusMessage(null);
   };
 
   // If we have an error or have checked status and it's an error
@@ -87,18 +106,31 @@ export default function ApiStatusAlert({ error, onRetry }: ApiStatusAlertProps) 
             )}
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-medium text-orange-800 dark:text-orange-300">
-              {apiStatus === "checking" 
-                ? "Checking API Status..." 
-                : apiStatus === "success"
-                ? "API Status Check Successful"
-                : "AI Service Issues Detected"}
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-medium text-orange-800 dark:text-orange-300">
+                {apiStatus === "checking" 
+                  ? "Checking API Status..." 
+                  : apiStatus === "success"
+                  ? "API Status Check Successful"
+                  : "AI Service Issues Detected"}
+              </h3>
+              
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="api-provider" className="text-xs">
+                  Use Gemini
+                </Label>
+                <Switch
+                  id="api-provider"
+                  checked={useGemini}
+                  onCheckedChange={handleToggleProvider}
+                />
+              </div>
+            </div>
             
             <p className="mt-1 text-sm text-orange-700 dark:text-orange-400">
               {apiStatus === "checking" 
-                ? "Verifying OpenAI API connection..." 
-                : statusMessage || error || "There may be issues with the OpenAI API connection."}
+                ? `Verifying ${providerName} API connection...` 
+                : statusMessage || error || `There may be issues with the ${providerName} API connection.`}
             </p>
             
             {(apiStatus === "error" || (error && !apiStatus)) && (
@@ -108,8 +140,8 @@ export default function ApiStatusAlert({ error, onRetry }: ApiStatusAlertProps) 
                   Troubleshooting Steps
                 </h4>
                 <ul className="list-disc list-inside text-xs text-orange-700 dark:text-orange-400 space-y-1">
-                  <li>Verify your OpenAI API key is valid and has available quota</li>
-                  <li>Check your OpenAI account billing settings</li>
+                  <li>Verify your {providerName} API key is valid and has available quota</li>
+                  <li>Check your {providerName} account billing settings</li>
                   <li>If on a free tier, consider upgrading your account</li>
                   <li>Wait some time and try again if you've hit rate limits</li>
                 </ul>
