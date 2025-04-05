@@ -1,6 +1,45 @@
+import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+
+// Add error boundary for better error handling in production
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+  constructor(props: {children: React.ReactNode}) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Application error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md">
+            <div className="text-red-500 text-5xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h1>
+            <p className="text-gray-600 mb-4">The application encountered an error. Please try refreshing the page.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 // Create a demo user if not exists
 const setupInitialData = async () => {
@@ -117,5 +156,15 @@ const setupInitialData = async () => {
 
 // Set up initial data and then render the app
 setupInitialData().then(() => {
-  createRoot(document.getElementById("root")!).render(<App />);
+  // Create root with performance improvements
+  const root = createRoot(document.getElementById("root")!);
+  
+  // Use ErrorBoundary and React.StrictMode for better error handling
+  root.render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
 });
