@@ -424,8 +424,65 @@ export default function AiAssistant() {
                         onChange={(e) => setPrompt(e.target.value)}
                       />
                     </div>
+
+                    <div className="space-y-2 mt-4">
+                      <label className="text-sm font-medium">Prompt Templates</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="justify-start"
+                          onClick={() => setPrompt("Create an engaging post about our new product that highlights the key features and benefits for our target audience.")}
+                        >
+                          <ClipboardIcon className="h-4 w-4 mr-2" />
+                          Product Launch
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="justify-start"
+                          onClick={() => setPrompt("Analyze our audience data and suggest the optimal time to post content for maximum engagement across all our platforms.")}
+                        >
+                          <Clock className="h-4 w-4 mr-2" />
+                          Timing Strategy
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="justify-start"
+                          onClick={() => setPrompt("Identify current trending topics in our industry and create viral content ideas that we can capitalize on.")}
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Trend Analysis
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="justify-start"
+                          onClick={() => setPrompt("Generate a series of posts for a week-long campaign that builds engagement and drives conversions for our latest offering.")}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Campaign Series
+                        </Button>
+                      </div>
+                    </div>
                     
-                    <div className="flex justify-end">
+                    <div className="flex items-center justify-between mt-4">
+                      <Select 
+                        value={contentType} 
+                        onValueChange={setContentType}
+                        className="w-48"
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Content Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="content">General Content</SelectItem>
+                          <SelectItem value="trend">Trending Topic</SelectItem>
+                          <SelectItem value="timing">Posting Strategy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
                       <Button 
                         onClick={handleGenerateContent}
                         disabled={!prompt.trim() || generateContentMutation.isPending}

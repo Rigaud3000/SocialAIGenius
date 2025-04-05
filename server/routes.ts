@@ -219,21 +219,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Prompt is required" });
       }
       
-      // Use OpenAI to generate content
+      // Configure system message based on content type
+      let systemMessage = "";
+      
+      switch (type) {
+        case "trend":
+          systemMessage = "You are a trend analysis expert for social media. Identify current trends related to the user's prompt and suggest viral content ideas that capitalize on these trends. Provide an engaging title and detailed content that would perform well on social platforms. Respond in JSON format with title and content fields.";
+          break;
+        case "timing":
+          systemMessage = "You are a social media scheduling expert. Analyze the optimal posting times and frequency for content related to the user's prompt. Consider platform-specific timing strategies and audience engagement patterns. Provide recommendations in JSON format with title and content fields.";
+          break;
+        default:
+          systemMessage = "You are a professional social media content creator specializing in viral, engaging posts. Create content that's optimized for high engagement, shares, and conversions. Make it concise yet impactful, with compelling hooks and calls to action. Tailor your suggestions to perform well across multiple platforms. Respond in JSON format with title and content fields.";
+      }
+      
+      // Enhance the prompt based on the content type
+      let enhancedPrompt = prompt;
+      if (type === "trend") {
+        enhancedPrompt = `${prompt}\n\nCreate content that capitalizes on current trends and is likely to go viral. Include relevant hashtags and hooks that will drive engagement.`;
+      } else if (type === "timing") {
+        enhancedPrompt = `${prompt}\n\nProvide strategic advice on when to post this content for maximum reach and engagement. Include platform-specific recommendations.`;
+      }
+      
       // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
           {
             role: "system",
-            content: "You are a professional social media content creator. Create engaging, concise content for social media posts based on the user's prompt. Respond in JSON format with title and content fields."
+            content: systemMessage
           },
           {
             role: "user",
-            content: prompt
+            content: enhancedPrompt
           }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        temperature: 0.7 // Add some creativity but keep it focused
       });
       
       // Parse the JSON response
@@ -242,10 +264,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For demo purposes, use user ID 1
       const userId = 1;
       
+      // Generate a better title if none provided
+      const title = content.title || (type === "trend" ? 
+        "Trending Content Opportunity" : 
+        type === "timing" ? 
+        "Optimal Posting Strategy" : 
+        "AI-Optimized Content");
+      
       // Save to storage
       const suggestion = await storage.createAiSuggestion({
         userId,
-        title: content.title || "AI Generated Content",
+        title: title,
         content: content.content || "",
         type: type || "content",
         used: false
