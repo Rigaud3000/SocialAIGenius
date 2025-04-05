@@ -924,6 +924,54 @@ ${item.text}
     }
   });
 
+  // Website fetching endpoint
+  apiRouter.post("/fetch-website", async (req: Request, res: Response) => {
+    try {
+      const { url } = req.body;
+      
+      if (!url) {
+        return res.status(400).json({ error: "URL is required" });
+      }
+      
+      try {
+        // Basic URL validation
+        new URL(url);
+      } catch (e) {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+      
+      try {
+        // Fetch website content
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          },
+        });
+        
+        if (!response.ok) {
+          return res.status(response.status).json({ 
+            error: `Failed to fetch website: ${response.statusText}`, 
+            status: response.status 
+          });
+        }
+        
+        const content = await response.text();
+        
+        res.json({
+          content,
+          url,
+          fetchedAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Website fetch error:", error);
+        res.status(500).json({ error: "Failed to fetch website content" });
+      }
+    } catch (error) {
+      console.error("Website fetch route error:", error);
+      res.status(500).json({ error: "An unexpected error occurred" });
+    }
+  });
+  
   // Register API router with prefix
   app.use("/api", apiRouter);
   
