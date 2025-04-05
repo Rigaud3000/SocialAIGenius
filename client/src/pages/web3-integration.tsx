@@ -19,8 +19,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Hash, Info, Leaf, Bitcoin, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Import the smart contract interaction component
+// Import the web3 components
 import SmartContractInteraction from "@/components/web3/smart-contract-interaction";
+import VirtualWorldConnector from "@/components/web3/virtual-world-connector";
 
 // Web3 platforms supported by our application
 const web3Platforms = [
@@ -168,6 +169,7 @@ export default function Web3Integration() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="nft">NFT Collections</TabsTrigger>
           <TabsTrigger value="post">Post Content</TabsTrigger>
+          <TabsTrigger value="virtual-worlds">Virtual Worlds</TabsTrigger>
           <TabsTrigger value="contracts">Smart Contracts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -475,6 +477,11 @@ export default function Web3Integration() {
           )}
           
           <SmartContractInteraction />
+        </TabsContent>
+        
+        {/* Virtual Worlds Tab */}
+        <TabsContent value="virtual-worlds" className="space-y-6">
+          <VirtualWorldConnector />
         </TabsContent>
         
         {/* Analytics Tab */}

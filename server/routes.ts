@@ -671,6 +671,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Virtual world endpoints
+  apiRouter.get("/virtual-worlds", async (req: Request, res: Response) => {
+    try {
+      // Get platforms that are virtual worlds (based on their slugs)
+      const allPlatforms = await storage.getAllPlatforms();
+      const virtualWorlds = allPlatforms.filter(platform => [
+        'decentraland', 
+        'sandbox', 
+        'roblox', 
+        'meta', 
+        'voxels', 
+        'somnium'
+      ].includes(platform.slug));
+      
+      res.json(virtualWorlds);
+    } catch (error) {
+      console.error("Error getting virtual worlds:", error);
+      res.status(500).json({ error: "Failed to get virtual worlds" });
+    }
+  });
+  
+  apiRouter.get("/virtual-world-accounts", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+      
+      // Get all social accounts for the user
+      const accounts = await storage.getSocialAccountsByUserId(Number(userId));
+      
+      // Get all platforms
+      const platforms = await storage.getAllPlatforms();
+      
+      // Filter accounts that belong to virtual world platforms
+      const virtualWorldPlatformIds = platforms
+        .filter(platform => [
+          'decentraland', 
+          'sandbox', 
+          'roblox', 
+          'meta', 
+          'voxels', 
+          'somnium'
+        ].includes(platform.slug))
+        .map(platform => platform.id);
+      
+      const virtualWorldAccounts = accounts.filter(account => 
+        virtualWorldPlatformIds.includes(account.platformId)
+      );
+      
+      res.json(virtualWorldAccounts);
+    } catch (error) {
+      console.error("Error getting virtual world accounts:", error);
+      res.status(500).json({ error: "Failed to get virtual world accounts" });
+    }
+  });
+  
+  apiRouter.post("/virtual-world-message", async (req: Request, res: Response) => {
+    try {
+      const { userId, platformId, recipient, message, hasAttachment } = req.body;
+      
+      if (!userId || !platformId || !recipient || !message) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Mock success response
+      setTimeout(() => {
+        res.json({ 
+          success: true, 
+          messageId: Math.floor(Math.random() * 1000000),
+          timestamp: new Date().toISOString()
+        });
+      }, 800);
+      
+    } catch (error) {
+      console.error("Error sending virtual world message:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  apiRouter.post("/virtual-world-post", async (req: Request, res: Response) => {
+    try {
+      const { userId, platformId, content, hasAttachment } = req.body;
+      
+      if (!userId || !platformId || !content) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Create a new post in our database
+      const newPost = await storage.createPost({
+        userId: Number(userId),
+        title: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+        content,
+        status: 'published',
+        type: 'virtual-world'
+      });
+      
+      // Create post platform association
+      await storage.createPostPlatform({
+        postId: newPost.id,
+        platformId: Number(platformId),
+        publishStatus: 'published',
+        publishedAt: new Date().toISOString(),
+        customContent: null,
+        engagementStats: {
+          likes: 0,
+          comments: 0,
+          shares: 0
+        }
+      });
+      
+      // Mock success response
+      res.json({ 
+        success: true, 
+        postId: newPost.id,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error("Error creating virtual world post:", error);
+      res.status(500).json({ error: "Failed to create post" });
+    }
+  });
 
   // Register API router with prefix
   app.use("/api", apiRouter);

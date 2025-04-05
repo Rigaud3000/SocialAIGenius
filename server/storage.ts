@@ -90,6 +90,7 @@ export class MemStorage implements IStorage {
   // Initialize default platforms
   private initDefaultPlatforms() {
     const defaultPlatforms: InsertPlatform[] = [
+      // Traditional social media platforms
       { name: "Facebook", slug: "facebook", iconUrl: "facebook", color: "#1877F2", active: true },
       { name: "Twitter", slug: "twitter", iconUrl: "twitter", color: "#1DA1F2", active: true },
       { name: "Instagram", slug: "instagram", iconUrl: "instagram", color: "#E1306C", active: true },
@@ -97,7 +98,15 @@ export class MemStorage implements IStorage {
       { name: "YouTube", slug: "youtube", iconUrl: "youtube", color: "#FF0000", active: true },
       { name: "Pinterest", slug: "pinterest", iconUrl: "pinterest", color: "#E60023", active: true },
       { name: "TikTok", slug: "tiktok", iconUrl: "tiktok", color: "#000000", active: true },
-      { name: "Discord", slug: "discord", iconUrl: "discord", color: "#5865F2", active: true }
+      { name: "Discord", slug: "discord", iconUrl: "discord", color: "#5865F2", active: true },
+      
+      // Virtual world and metaverse platforms
+      { name: "Decentraland", slug: "decentraland", iconUrl: "decentraland", color: "#FF2D55", active: true },
+      { name: "The Sandbox", slug: "sandbox", iconUrl: "sandbox", color: "#00ADEF", active: true },
+      { name: "Roblox", slug: "roblox", iconUrl: "roblox", color: "#FF0000", active: true },
+      { name: "Meta Horizon Worlds", slug: "meta", iconUrl: "meta", color: "#0080FF", active: true },
+      { name: "Voxels", slug: "voxels", iconUrl: "voxels", color: "#9B59B6", active: true },
+      { name: "Somnium Space", slug: "somnium", iconUrl: "somnium", color: "#00BCD4", active: true }
     ];
     
     for (const platform of defaultPlatforms) {
