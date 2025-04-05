@@ -1,5 +1,23 @@
 import { saveAs } from 'file-saver';
-import { Post, Platform, PostPlatform } from '@shared/schema';
+import { Post as BasePost, Platform, PostPlatform as BasePostPlatform } from '@shared/schema';
+
+// Extended Post interface with additional properties needed for export
+interface Post extends BasePost {
+  title: string;
+  status: string;
+}
+
+// Extended PostPlatform interface with additional properties needed for export
+interface PostPlatform extends BasePostPlatform {
+  platformId: number;
+  status: string;
+  engagementStats: {
+    engagement?: number;
+    likes?: number;
+    comments?: number;
+    shares?: number;
+  };
+}
 
 // Export formats
 export type ExportFormat = 'csv' | 'json' | 'pdf' | 'image';
@@ -85,11 +103,14 @@ function generateJSON(posts: Post[], platforms: Platform[], postPlatforms: PostP
  * Export posts data with various formats and options
  */
 export async function exportPosts(
-  posts: Post[],
+  basePosts: BasePost[],
   platforms: Platform[],
-  postPlatforms: PostPlatform[],
+  basePostPlatforms: BasePostPlatform[],
   options: ExportOptions
 ): Promise<boolean> {
+  // Cast the types to our extended interfaces
+  const posts = basePosts as unknown as Post[];
+  const postPlatforms = basePostPlatforms as unknown as PostPlatform[];
   try {
     // Apply date range filter if specified
     let filteredPosts = posts;
