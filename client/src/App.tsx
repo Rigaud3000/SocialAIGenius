@@ -10,6 +10,7 @@ import ConnectAccounts from "@/pages/connect-accounts";
 import Scheduler from "@/pages/scheduler";
 import Analytics from "@/pages/analytics";
 import AiAssistant from "@/pages/ai-assistant";
+import CompetitiveAnalysis from "@/pages/competitive-analysis";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useState } from "react";
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/scheduler" component={Scheduler} />
       <Route path="/analytics" component={Analytics} />
       <Route path="/ai-assistant" component={AiAssistant} />
+      <Route path="/competitive-analysis" component={CompetitiveAnalysis} />
       <Route component={NotFound} />
     </Switch>
   );
