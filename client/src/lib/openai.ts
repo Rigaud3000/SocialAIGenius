@@ -1,38 +1,5 @@
+import { ContentGenerationRequest, AiSuggestion, ContentResponse } from "@shared/types";
 import { apiRequest } from "./queryClient";
-
-// Functions to interact with OpenAI API via our backend
-
-export interface ContentGenerationRequest {
-  prompt: string;
-  type?: "trend" | "content" | "timing";
-  platforms?: string[]; // Specific platforms to optimize for
-  audience?: string; // Target audience
-  keywords?: string[]; // Keywords to include
-  useGemini?: boolean; // Whether to use Google Gemini API instead of OpenAI
-}
-
-export interface AiSuggestion {
-  id: number;
-  userId: number;
-  title: string;
-  content: string;
-  type: string;
-  used: boolean;
-  createdAt: string;
-  platforms?: string[]; // Platforms this suggestion is optimized for
-  metadata?: {
-    sentiment?: string;
-    hashtags?: string[];
-    callToAction?: string;
-    bestTime?: string;
-    audienceMatch?: number; // 0-100% match with target audience
-  };
-}
-
-export interface ContentResponse {
-  title: string;
-  content: string;
-}
 
 /**
  * Generate content using AI with enhanced capabilities
@@ -40,33 +7,14 @@ export interface ContentResponse {
  * @returns The AI-generated suggestion
  */
 export async function generateContent(request: ContentGenerationRequest): Promise<AiSuggestion> {
-  // Prepare request object with defaults if needed
-  const enhancedRequest = {
-    ...request,
-    type: request.type || "content"
-  };
-  
-  try {
-    const response = await apiRequest("POST", "/api/ai-content", enhancedRequest);
-    
-    // Check if there's a problem with the response
-    if (!response.ok) {
-      const errorData = await response.json();
-      
-      // Handle rate limiting or quota issues
-      if (response.status === 429) {
-        const apiProvider = request.useGemini ? "Google Gemini" : "OpenAI";
-        throw new Error(`${apiProvider} API quota exceeded: ${errorData.message || 'Please try again later or update your API key.'}`);
-      }
-      
-      throw new Error(errorData.message || "Failed to generate content");
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error("Error generating content:", error);
-    throw error;
-  }
+  // Make API request to content generation endpoint
+  const response = await apiRequest({
+    method: "POST",
+    url: "/api/ai-content",
+    data: request,
+  });
+
+  return response;
 }
 
 /**
@@ -75,8 +23,12 @@ export async function generateContent(request: ContentGenerationRequest): Promis
  * @returns The updated suggestion
  */
 export async function useSuggestion(id: number): Promise<AiSuggestion> {
-  const response = await apiRequest("PUT", `/api/ai-suggestions/${id}/use`);
-  return await response.json();
+  const response = await apiRequest({
+    method: "PUT",
+    url: `/api/ai-suggestions/${id}/use`,
+  });
+
+  return response;
 }
 
 /**
@@ -89,23 +41,30 @@ export async function useSuggestion(id: number): Promise<AiSuggestion> {
 export async function generateContentVariations(
   theme: string,
   count: number = 3,
-  type: "trend" | "content" | "timing" = "content",
-  useGemini: boolean = false
-): Promise<AiSuggestion[]> {
-  // Generate variations one by one
-  const variations: AiSuggestion[] = [];
+  type: string = "content"
+): Promise<ContentResponse[]> {
+  // This would be implemented in a real application to generate multiple content variations
+  // For now we'll simulate it with a placeholder implementation
   
-  for (let i = 0; i < count; i++) {
-    const variation = await generateContent({
-      prompt: `Generate variation ${i+1} for: ${theme}. Make it unique from other variations.`,
-      type,
-      useGemini
-    });
-    
-    variations.push(variation);
-  }
+  const suggestions = await Promise.all(
+    Array(count).fill(0).map(async (_, i) => {
+      const response = await apiRequest({
+        method: "POST",
+        url: "/api/ai-content",
+        data: {
+          prompt: `Create a variation ${i + 1} of content about: ${theme}`,
+          type,
+        },
+      });
+      
+      return {
+        title: `Variation ${i + 1}: ${theme}`,
+        content: response.content,
+      };
+    })
+  );
   
-  return variations;
+  return suggestions;
 }
 
 /**
@@ -117,44 +76,25 @@ export async function generateContentVariations(
  * @returns The created post
  */
 export async function createPostFromSuggestion(
-  suggestionId: number, 
-  platforms: number[], 
-  scheduledAt?: string,
+  suggestionId: number,
+  platforms: number[],
+  scheduledAt?: Date,
   customizations?: {
-    addHashtags?: boolean;
-    includeEmojis?: boolean;
-    contentLength?: 'short' | 'medium' | 'long';
-    tone?: 'professional' | 'casual' | 'humorous';
+    title?: string;
+    content?: string;
+    hashtags?: string[];
   }
 ): Promise<any> {
-  // First, get the suggestion
-  const suggestionRes = await apiRequest("GET", `/api/ai-suggestions/${suggestionId}`);
-  const suggestion = await suggestionRes.json();
+  const response = await apiRequest({
+    method: "POST",
+    url: "/api/posts",
+    data: {
+      suggestionId,
+      platforms,
+      scheduledAt: scheduledAt ? scheduledAt.toISOString() : null,
+      ...customizations,
+    },
+  });
   
-  // Apply customizations if provided
-  let content = suggestion.content;
-  
-  // This would normally call the API to customize, but for demo purposes
-  // we'll just add a placeholder comment
-  if (customizations) {
-    content = `${content}\n\n/* Content customized with: ${JSON.stringify(customizations)} */`;
-  }
-  
-  // Create a new post
-  const postData = {
-    userId: 1, // For demo purposes
-    content: content,
-    status: scheduledAt ? "scheduled" : "draft",
-    scheduledAt: scheduledAt,
-    platforms: platforms,
-    aiGenerated: true
-  };
-  
-  const postRes = await apiRequest("POST", "/api/posts", postData);
-  const post = await postRes.json();
-  
-  // Mark suggestion as used
-  await useSuggestion(suggestionId);
-  
-  return post;
+  return response;
 }

@@ -12,6 +12,7 @@ import Analytics from "@/pages/analytics";
 import AiAssistant from "@/pages/ai-assistant";
 import CompetitiveAnalysis from "@/pages/competitive-analysis";
 import Web3Integration from "@/pages/web3-integration";
+import Translation from "@/pages/translation";
 import Sidebar from "@/components/layout/sidebar";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import Header from "@/components/layout/header";
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/ai-assistant" component={AiAssistant} />
         <Route path="/competitive-analysis" component={CompetitiveAnalysis} />
         <Route path="/web3-integration" component={Web3Integration} />
+        <Route path="/translation" component={Translation} />
         <Route component={NotFound} />
       </Switch>
     </Suspense>

@@ -44,7 +44,7 @@ export interface TranslationResponse {
 
 /**
  * Translate text from one language to another
- * Uses OpenAI or other translation services via backend
+ * Uses Gemini API for translation services via backend
  */
 export async function translateText(request: TranslationRequest): Promise<TranslationResponse> {
   try {

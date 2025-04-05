@@ -69,8 +69,11 @@ export default function AiAssistant() {
   // Mutation to create a post from AI suggestion
   const createPostMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/posts", data);
-      return response.json();
+      return apiRequest({
+        method: "POST", 
+        url: "/api/posts", 
+        data
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/posts"] });
@@ -96,8 +99,10 @@ export default function AiAssistant() {
   // Use AI suggestion to create a post
   const useSuggestionMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest("PUT", `/api/ai-suggestions/${id}/use`);
-      return response.json();
+      return apiRequest({
+        method: "PUT", 
+        url: `/api/ai-suggestions/${id}/use`
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai-suggestions"] });

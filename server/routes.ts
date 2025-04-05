@@ -805,27 +805,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
       
-      // Use OpenAI for translation
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      // Use Google's Gemini API
+      const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are a professional translator. Translate the text from ${sourceLanguage || 'auto-detected language'} to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with only the translated text, no explanations or additional text.`
-          },
-          {
-            role: "user",
-            content: text
-          }
-        ],
-        temperature: 0.3, // Lower temperature for more accurate translations
-      });
+      const prompt = `You are a professional translator. Translate the text from ${sourceLanguage || 'auto-detected language'} to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with only the translated text, no explanations or additional text.
+
+Text to translate:
+"""
+${text}
+"""`;
       
-      const translatedText = response.choices[0].message.content?.trim() || "";
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const translatedText = response.text().trim();
       
       res.json({
         translatedText,
@@ -834,12 +826,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error("Translation error:", error);
-      // Check if this is an OpenAI API quota error
-      if (error?.error?.type === 'insufficient_quota') {
+      
+      // Check for Gemini API quota/rate limit errors
+      if (error?.message?.includes('quota') || error?.message?.includes('rate limit')) {
         return res.status(402).json({ 
           error: "Translation service quota exceeded. Please try again later."
         });
       }
+      
       res.status(500).json({ error: "Failed to translate text" });
     }
   });
@@ -852,27 +846,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing text" });
       }
       
-      // Use OpenAI to detect language
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      // Use Gemini to detect language
+      const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are a language detection system. Analyze the provided text and determine what language it is written in. Return ONLY the ISO 639-1 two-letter language code (e.g., 'en' for English, 'es' for Spanish, etc.)."
-          },
-          {
-            role: "user",
-            content: text
-          }
-        ],
-        temperature: 0.3,
-      });
+      const prompt = `You are a language detection system. Analyze the provided text and determine what language it is written in. Return ONLY the ISO 639-1 two-letter language code (e.g., 'en' for English, 'es' for Spanish, etc.).
+
+Text to analyze:
+"""
+${text}
+"""`;
       
-      const detectedLanguage = response.choices[0].message.content?.trim().toLowerCase() || "en";
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const detectedLanguage = response.text().trim().toLowerCase();
       
       res.json({
         detectedLanguage
@@ -891,41 +877,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
       
-      // Use OpenAI for batch translation
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
+      // Use Gemini for batch translation
+      const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are a professional translator. Translate each text in the array to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with a valid JSON array containing only the translated texts in the same order as the input, no explanations or additional text.`
-          },
-          {
-            role: "user",
-            content: JSON.stringify(texts)
-          }
-        ],
-        temperature: 0.3,
-        response_format: { type: "json_object" }
-      });
+      const prompt = `You are a professional translator. Translate each text in the array to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with a valid JSON object containing a 'translations' array with the translated texts in the same order as the input. Do not include any other text in your response besides the JSON.
+
+Texts to translate:
+${JSON.stringify(texts, null, 2)}`;
       
-      const responseContent = response.choices[0].message.content;
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const responseContent = response.text();
       let translations: string[] = [];
       
       try {
-        const parsed = JSON.parse(responseContent || "{}");
+        // Try to extract JSON from the response
+        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+        const jsonStr = jsonMatch ? jsonMatch[0] : responseContent;
+        
+        const parsed = JSON.parse(jsonStr);
         translations = Array.isArray(parsed.translations) ? parsed.translations : [];
         
         // Fallback if the response format doesn't match expectations
         if (translations.length === 0 && Array.isArray(parsed)) {
           translations = parsed;
         }
+        
+        // If we still don't have translations, use a simple split approach
+        if (translations.length === 0) {
+          const lines = responseContent.split('\n').filter(line => line.trim() !== '');
+          translations = lines.slice(0, texts.length);
+        }
       } catch (e) {
         console.error("Error parsing translation response:", e);
-        throw new Error("Invalid translation response format");
+        // Fallback to simple line splitting
+        const lines = responseContent.split('\n').filter(line => line.trim() !== '');
+        translations = lines.slice(0, texts.length);
+      }
+      
+      // Ensure we have the right number of translations
+      if (translations.length < texts.length) {
+        while (translations.length < texts.length) {
+          translations.push("Translation error");
+        }
       }
       
       res.json({
