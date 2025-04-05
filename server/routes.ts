@@ -18,6 +18,45 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || "sk-dummy-key" 
 });
 
+// Helper to check if the OpenAI API key is valid and has quota
+async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
+  try {
+    if (!process.env.OPENAI_API_KEY) {
+      return { valid: false, message: "OpenAI API key is not configured" };
+    }
+    
+    // Make a small test request to verify the API key works
+    await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "test" }],
+      max_tokens: 5
+    });
+    
+    return { valid: true };
+  } catch (error: any) {
+    console.error("OpenAI API key validation error:", error);
+    
+    if (error?.code === 'insufficient_quota' || error?.status === 429) {
+      return { 
+        valid: false, 
+        message: "OpenAI API quota exceeded. Please check your API key billing details or try again later."
+      };
+    }
+    
+    if (error?.status === 401) {
+      return { 
+        valid: false, 
+        message: "Invalid OpenAI API key. Please check your API key and try again."
+      };
+    }
+    
+    return { 
+      valid: false, 
+      message: `Error validating OpenAI API key: ${error?.message || "Unknown error"}`
+    };
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create API router for all endpoints
   const apiRouter = Router();
@@ -219,6 +258,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Prompt is required" });
       }
       
+      // Check OpenAI API key status first
+      const apiStatus = await checkOpenAIApiKeyStatus();
+      if (!apiStatus.valid) {
+        return res.status(429).json({
+          message: apiStatus.message || "OpenAI API key is invalid or has exceeded its quota",
+          error: "API_KEY_ERROR"
+        });
+      }
+      
       // Configure system message based on content type
       let systemMessage = "";
       
@@ -241,25 +289,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         enhancedPrompt = `${prompt}\n\nProvide strategic advice on when to post this content for maximum reach and engagement. Include platform-specific recommendations.`;
       }
       
-      // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-      const response = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: systemMessage
-          },
-          {
-            role: "user",
-            content: enhancedPrompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7 // Add some creativity but keep it focused
-      });
-      
-      // Parse the JSON response
-      const content = JSON.parse(response.choices[0].message.content || '{"title": "", "content": ""}');
+      let content;
+      try {
+        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            {
+              role: "system",
+              content: systemMessage
+            },
+            {
+              role: "user",
+              content: enhancedPrompt
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7 // Add some creativity but keep it focused
+        });
+        
+        // Parse the JSON response
+        content = JSON.parse(response.choices[0].message.content || '{"title": "", "content": ""}');
+      } catch (error: any) {
+        // Check if it's a rate limit or quota error
+        if (error?.code === 'insufficient_quota' || error?.status === 429) {
+          return res.status(429).json({
+            message: "OpenAI API quota exceeded. Please check your API key billing details or try again later.",
+            error: "QUOTA_EXCEEDED",
+            suggestion: "Your API key has reached its usage limit. Consider upgrading your OpenAI plan or waiting until your quota resets."
+          });
+        }
+        
+        // For other errors
+        throw error;
+      }
       
       // For demo purposes, use user ID 1
       const userId = 1;
@@ -281,9 +344,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.json(suggestion);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI content generation error:", error);
-      res.status(500).json({ message: "Failed to generate AI content" });
+      
+      // If it's an OpenAI API-related error, provide a clearer message
+      if (error?.response?.status === 429 || error?.message?.includes('quota')) {
+        return res.status(429).json({
+          message: "OpenAI API quota exceeded. Please check your API key billing details or try again later.",
+          error: "QUOTA_EXCEEDED"
+        });
+      }
+      
+      res.status(500).json({ 
+        message: "Failed to generate AI content",
+        error: error?.message || "Unknown error"
+      });
     }
   });
   
@@ -361,6 +436,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analytics);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // API endpoint to check OpenAI API key status
+  apiRouter.get("/ai-api-status", async (req: Request, res: Response) => {
+    try {
+      const status = await checkOpenAIApiKeyStatus();
+      if (status.valid) {
+        res.json({ 
+          status: "success", 
+          message: "OpenAI API key is valid and has sufficient quota" 
+        });
+      } else {
+        res.status(400).json({
+          status: "error",
+          message: status.message
+        });
+      }
+    } catch (error: any) {
+      res.status(500).json({ 
+        status: "error", 
+        message: error?.message || "Failed to check OpenAI API status" 
+      });
     }
   });
 

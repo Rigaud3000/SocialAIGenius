@@ -12,17 +12,18 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
-import { Wand2Icon, Calendar as CalendarIcon, Sparkles, Lightbulb, Clock, Check, RefreshCw, Share2 } from "lucide-react";
+import { Wand2Icon, Calendar as CalendarIcon, Sparkles, Lightbulb, Clock, Check, RefreshCw, Share2, Clipboard as ClipboardIcon } from "lucide-react";
 import { FaFacebook, FaInstagram, FaTwitter, FaLinkedin, FaYoutube } from "react-icons/fa";
 import { generateContent } from "@/lib/openai";
 import { queryClient } from "@/lib/queryClient";
 import { apiRequest } from "@/lib/queryClient";
+import ApiStatusAlert from "@/components/ai/api-status-alert";
 
 export default function AiAssistant() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [tab, setTab] = useState("suggestions");
-  const [contentType, setContentType] = useState("general");
+  const [contentType, setContentType] = useState<string>("content");
   const [promptTemplate, setPromptTemplate] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedAccounts, setSelectedAccounts] = useState<number[]>([]);
@@ -48,10 +49,15 @@ export default function AiAssistant() {
         description: "AI has generated content based on your prompt",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      // Handle API quota specific errors more gracefully
+      const errorMessage = error?.message?.includes('quota exceeded') 
+        ? `OpenAI API quota exceeded. Please upgrade your API key plan or try again later.`
+        : "Failed to generate content. Please try again.";
+      
       toast({
         title: "Error",
-        description: "Failed to generate content. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -170,9 +176,14 @@ export default function AiAssistant() {
       return;
     }
     
+    // Convert contentType to a valid type for the API
+    const validType = contentType === "trend" || contentType === "content" || contentType === "timing" 
+      ? contentType as "trend" | "content" | "timing"
+      : "content"; // Default to content if somehow we get an invalid type
+    
     generateContentMutation.mutate({ 
       prompt: prompt,
-      type: contentType 
+      type: validType
     });
   };
 
@@ -379,6 +390,19 @@ export default function AiAssistant() {
                     <CardDescription>Create engaging content for your social media</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* API Status Alert - shows only when there are API errors */}
+                    {generateContentMutation.isError && (
+                      <div className="mb-4">
+                        <ApiStatusAlert 
+                          error={
+                            (generateContentMutation.error as any)?.message?.includes('quota exceeded')
+                              ? "OpenAI API quota exceeded. Please check your API key billing details or try again later."
+                              : "There was an error connecting to the OpenAI API."
+                          }
+                          onRetry={() => generateContentMutation.reset()}
+                        />
+                      </div>
+                    )}
                     <div>
                       <div className="flex justify-between mb-2">
                         <label htmlFor="content-type" className="text-sm font-medium">Content Type</label>
@@ -390,10 +414,9 @@ export default function AiAssistant() {
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="general">General Content</SelectItem>
-                            <SelectItem value="trend">Trending Topic</SelectItem>
                             <SelectItem value="content">Content Idea</SelectItem>
-                            <SelectItem value="timing">Posting Schedule</SelectItem>
+                            <SelectItem value="trend">Trending Topic</SelectItem>
+                            <SelectItem value="timing">Posting Strategy</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -467,21 +490,24 @@ export default function AiAssistant() {
                       </div>
                     </div>
                     
+
+
                     <div className="flex items-center justify-between mt-4">
-                      <Select 
-                        value={contentType} 
-                        onValueChange={setContentType}
-                        className="w-48"
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Content Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="content">General Content</SelectItem>
-                          <SelectItem value="trend">Trending Topic</SelectItem>
-                          <SelectItem value="timing">Posting Strategy</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="w-48">
+                        <Select 
+                          value={contentType} 
+                          onValueChange={setContentType}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Content Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="content">Content Idea</SelectItem>
+                            <SelectItem value="trend">Trending Topic</SelectItem>
+                            <SelectItem value="timing">Posting Strategy</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       
                       <Button 
                         onClick={handleGenerateContent}

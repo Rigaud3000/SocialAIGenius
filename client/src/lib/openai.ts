@@ -45,8 +45,26 @@ export async function generateContent(request: ContentGenerationRequest): Promis
     type: request.type || "content"
   };
   
-  const response = await apiRequest("POST", "/api/ai-content", enhancedRequest);
-  return await response.json();
+  try {
+    const response = await apiRequest("POST", "/api/ai-content", enhancedRequest);
+    
+    // Check if there's a problem with the response
+    if (!response.ok) {
+      const errorData = await response.json();
+      
+      // Handle rate limiting or quota issues
+      if (response.status === 429) {
+        throw new Error(`OpenAI API quota exceeded: ${errorData.message || 'Please try again later or update your API key.'}`);
+      }
+      
+      throw new Error(errorData.message || "Failed to generate content");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error("Error generating content:", error);
+    throw error;
+  }
 }
 
 /**
