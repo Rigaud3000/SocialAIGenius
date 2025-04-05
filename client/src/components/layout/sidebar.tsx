@@ -1,0 +1,166 @@
+import { Link, useLocation } from "wouter";
+import { Dispatch, SetStateAction, useState } from "react";
+import { cn } from "@/lib/utils";
+import { FaFacebook, FaInstagram, FaTwitter, FaLinkedin, FaYoutube } from "react-icons/fa";
+import { useQuery } from "@tanstack/react-query";
+
+// Props for the Sidebar component
+interface SidebarProps {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<boolean>>;
+}
+
+export default function Sidebar({ open, setOpen }: SidebarProps) {
+  const [location] = useLocation();
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Query to get connected accounts
+  const { data: accounts } = useQuery({
+    queryKey: ["/api/accounts"],
+    staleTime: 60000, // 1 minute
+  });
+
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    
+    if (newMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.theme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.theme = 'light';
+    }
+  };
+
+  return (
+    <aside className={cn(
+      "w-64 flex-shrink-0 md:flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm",
+      open ? "fixed inset-y-0 z-50 flex" : "hidden"
+    )}>
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center">
+          <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h1 className="ml-3 text-xl font-bold text-gray-900 dark:text-white">SocialAI</h1>
+        </div>
+      </div>
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
+        <Link href="/">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Dashboard
+          </a>
+        </Link>
+        <Link href="/content-creator">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/content-creator" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Content Creator
+          </a>
+        </Link>
+        <Link href="/scheduler">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/scheduler" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Scheduler
+          </a>
+        </Link>
+        <Link href="/analytics">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/analytics" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Analytics
+          </a>
+        </Link>
+        <Link href="/ai-assistant">
+          <a className={cn(
+            "flex items-center px-3 py-2 rounded-md text-sm font-medium",
+            location === "/ai-assistant" 
+              ? "bg-gray-100 text-primary dark:bg-gray-700 dark:text-primary" 
+              : "text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+          )}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            AI Assistant
+          </a>
+        </Link>
+
+        {/* Platform Connections */}
+        <div className="pt-2 space-y-1">
+          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider dark:text-gray-400">
+            Platform Connections
+          </h3>
+          
+          {accounts?.map((account: any) => (
+            <a 
+              href="#" 
+              key={account.id}
+              className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-primary dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              <div className="w-5 h-5 mr-3 flex items-center justify-center">
+                {account.platform?.slug === 'facebook' && <FaFacebook className="h-5 w-5 text-blue-500" />}
+                {account.platform?.slug === 'instagram' && <FaInstagram className="h-5 w-5 text-pink-500" />}
+                {account.platform?.slug === 'twitter' && <FaTwitter className="h-5 w-5 text-blue-400" />}
+                {account.platform?.slug === 'linkedin' && <FaLinkedin className="h-5 w-5 text-blue-700" />}
+                {account.platform?.slug === 'youtube' && <FaYoutube className="h-5 w-5 text-red-600" />}
+              </div>
+              {account.platform.name}
+            </a>
+          ))}
+        </div>
+      </nav>
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</span>
+          <label className="flex items-center cursor-pointer">
+            <div className="relative">
+              <input 
+                id="dark-mode-toggle" 
+                type="checkbox" 
+                className="sr-only" 
+                checked={darkMode}
+                onChange={toggleDarkMode}
+              />
+              <div className="block w-10 h-6 bg-gray-300 rounded-full"></div>
+              <div className={cn(
+                "absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-all",
+                darkMode && "transform translate-x-4"
+              )}></div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </aside>
+  );
+}
