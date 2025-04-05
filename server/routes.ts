@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import OpenAI from "openai";
 import { 
   insertUserSchema, 
   insertPlatformSchema, 
@@ -11,7 +12,6 @@ import {
   insertPostPlatformSchema,
   insertAiSuggestionSchema
 } from "@shared/schema";
-import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Initialize OpenAI with environment variables
@@ -793,6 +793,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating virtual world post:", error);
       res.status(500).json({ error: "Failed to create post" });
+    }
+  });
+  
+  // Translation service endpoints
+  apiRouter.post("/translate", async (req: Request, res: Response) => {
+    try {
+      const { text, sourceLanguage, targetLanguage } = req.body;
+      
+      if (!text || !targetLanguage) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Use OpenAI for translation
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate the text from ${sourceLanguage || 'auto-detected language'} to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with only the translated text, no explanations or additional text.`
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        temperature: 0.3, // Lower temperature for more accurate translations
+      });
+      
+      const translatedText = response.choices[0].message.content?.trim() || "";
+      
+      res.json({
+        translatedText,
+        originalText: text,
+        detectedSourceLanguage: sourceLanguage || "auto"
+      });
+    } catch (error: any) {
+      console.error("Translation error:", error);
+      // Check if this is an OpenAI API quota error
+      if (error?.error?.type === 'insufficient_quota') {
+        return res.status(402).json({ 
+          error: "Translation service quota exceeded. Please try again later."
+        });
+      }
+      res.status(500).json({ error: "Failed to translate text" });
+    }
+  });
+  
+  apiRouter.post("/detect-language", async (req: Request, res: Response) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ error: "Missing text" });
+      }
+      
+      // Use OpenAI to detect language
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a language detection system. Analyze the provided text and determine what language it is written in. Return ONLY the ISO 639-1 two-letter language code (e.g., 'en' for English, 'es' for Spanish, etc.)."
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        temperature: 0.3,
+      });
+      
+      const detectedLanguage = response.choices[0].message.content?.trim().toLowerCase() || "en";
+      
+      res.json({
+        detectedLanguage
+      });
+    } catch (error) {
+      console.error("Language detection error:", error);
+      res.status(500).json({ error: "Failed to detect language" });
+    }
+  });
+  
+  apiRouter.post("/batch-translate", async (req: Request, res: Response) => {
+    try {
+      const { texts, targetLanguage } = req.body;
+      
+      if (!texts || !Array.isArray(texts) || !targetLanguage) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+      
+      // Use OpenAI for batch translation
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+      
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate each text in the array to ${targetLanguage}. Maintain the original meaning, tone, and formatting as much as possible. Respond with a valid JSON array containing only the translated texts in the same order as the input, no explanations or additional text.`
+          },
+          {
+            role: "user",
+            content: JSON.stringify(texts)
+          }
+        ],
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+      
+      const responseContent = response.choices[0].message.content;
+      let translations: string[] = [];
+      
+      try {
+        const parsed = JSON.parse(responseContent || "{}");
+        translations = Array.isArray(parsed.translations) ? parsed.translations : [];
+        
+        // Fallback if the response format doesn't match expectations
+        if (translations.length === 0 && Array.isArray(parsed)) {
+          translations = parsed;
+        }
+      } catch (e) {
+        console.error("Error parsing translation response:", e);
+        throw new Error("Invalid translation response format");
+      }
+      
+      res.json({
+        translations
+      });
+    } catch (error) {
+      console.error("Batch translation error:", error);
+      res.status(500).json({ error: "Failed to translate texts" });
     }
   });
 
