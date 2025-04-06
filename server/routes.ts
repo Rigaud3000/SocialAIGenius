@@ -4,24 +4,38 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
 import OpenAI from "openai";
-import { 
-  insertUserSchema, 
-  insertPlatformSchema, 
+import {
+  insertUserSchema,
+  insertPlatformSchema,
   insertSocialAccountSchema,
   insertPostSchema,
   insertPostPlatformSchema,
   insertAiSuggestionSchema
 } from "@shared/schema";
 import { GoogleGenerativeAI, type GenerativeModel } from "@google/generative-ai";
-import { TranslationRequest, TranslationResponse, BatchTranslationRequest, BatchTranslationResponse } from "@shared/types";
+import {
+  TranslationRequest,
+  TranslationResponse,
+  BatchTranslationRequest,
+  BatchTranslationResponse
+} from "@shared/types";
 
 // Initialize OpenAI with environment variables
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || "sk-dummy-key" 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || "sk-dummy-key"
 });
 
-// Initialize Google Gemini API
-const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "AIzaSyC5T2TPQoUcyZa992JcffC3OMxYXgkXwus");
+// Initialize Google Gemini API with key validation and logging
+const geminiApiKey = process.env.GEMINI_API_KEY || "AIzaSyC5T2TPQoUcyZa992JcffC3OMxYXgkXwus";
+const gemini = new GoogleGenerativeAI(geminiApiKey);
+
+// Log Gemini key status
+if (!process.env.GEMINI_API_KEY) {
+  console.warn("[Warning] GEMINI_API_KEY not found in environment. Falling back to default.");
+} else {
+  const maskedKey = geminiApiKey.slice(0, 6) + "...";
+  console.log(`[Gemini] API Key Loaded: ${maskedKey}`);
+}
 
 // Helper to check if the OpenAI API key is valid and has quota
 async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
@@ -29,34 +43,34 @@ async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: st
     if (!process.env.OPENAI_API_KEY) {
       return { valid: false, message: "OpenAI API key is not configured" };
     }
-    
+
     // Make a small test request to verify the API key works
     await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: "test" }],
       max_tokens: 5
     });
-    
+
     return { valid: true };
   } catch (error: any) {
     console.error("OpenAI API key validation error:", error);
-    
+
     if (error?.code === 'insufficient_quota' || error?.status === 429) {
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         message: "OpenAI API quota exceeded. Please check your API key billing details or try again later."
       };
     }
-    
+
     if (error?.status === 401) {
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         message: "Invalid OpenAI API key. Please check your API key and try again."
       };
     }
-    
-    return { 
-      valid: false, 
+
+    return {
+      valid: false,
       message: `Error validating OpenAI API key: ${error?.message || "Unknown error"}`
     };
   }
@@ -65,44 +79,38 @@ async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: st
 // Helper to check if the Gemini API key is valid
 async function checkGeminiApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
   try {
-    // If Gemini API key is not set, return false
-    if (!process.env.GEMINI_API_KEY && !gemini) {
+    if (!geminiApiKey) {
       return { valid: false, message: "Gemini API key is not configured" };
     }
-    
-    // Get a generative model
+
     const model = gemini.getGenerativeModel({ model: "gemini-1.5-pro" });
-    
-    // Send a test prompt
     const result = await model.generateContent("test");
     const response = await result.response;
-    
+
     if (!response) {
       return { valid: false, message: "Failed to get response from Gemini API" };
     }
-    
+
     return { valid: true };
   } catch (error: any) {
     console.error("Gemini API key validation error:", error);
-    
-    // Handle rate limits
+
     if (error?.message?.includes('quota') || error?.message?.includes('rate limit')) {
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         message: "Gemini API quota exceeded or rate limited. Please try again later."
       };
     }
-    
-    // Handle authentication errors
+
     if (error?.message?.includes('API key')) {
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         message: "Invalid Gemini API key. Please check your API key and try again."
       };
     }
-    
-    return { 
-      valid: false, 
+
+    return {
+      valid: false,
       message: `Error validating Gemini API key: ${error?.message || "Unknown error"}`
     };
   }
