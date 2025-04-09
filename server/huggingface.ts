@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || "your-default-key-here";
+const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || "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";
 
 export async function queryHuggingFace(model: string, inputs: string) {
   try {
