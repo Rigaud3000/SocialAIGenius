@@ -1,22 +1,23 @@
-import axios from "axios";
+import fetch from "node-fetch"; // or use global fetch if you're on Node 18+
+import dotenv from "dotenv";
+dotenv.config();
 
-const HUGGINGFACE_API_KEY = process.env.HUGGINGFACE_API_KEY || "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";
+export async function queryHuggingFace(model: string, prompt: string) {
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
 
-export async function queryHuggingFace(model: string, inputs: string) {
-  try {
-    const response = await axios.post(
-      `https://api-inference.huggingface.co/models/${model}`,
-      { inputs },
-      {
-        headers: {
-          Authorization: `Bearer ${HUGGINGFACE_API_KEY}`,
-        },
-      }
-    );
+  const response = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ inputs: prompt }),
+  });
 
-    return response.data;
-  } catch (err: any) {
-    console.error("HuggingFace API error:", err?.response?.data || err.message);
-    throw new Error("Failed to generate content from Hugging Face");
+  if (!response.ok) {
+    throw new Error(`Hugging Face API error: ${response.statusText}`);
   }
+
+  const data = await response.json();
+  return data;
 }
