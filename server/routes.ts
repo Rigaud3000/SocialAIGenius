@@ -19,62 +19,90 @@ import {
   BatchTranslationRequest,
   BatchTranslationResponse
 } from "@shared/types";
+import { queryHuggingFace } from "./huggingface"; // ✅ Hugging Face API helper import
 
-// Initialize OpenAI with environment variables
+// Initialize OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || "sk-dummy-key"
+  apiKey: process.env.OPENAI_API_KEY || process.env.API_KEY_ENV_VAR || ""
 });
 
-// Initialize Google Gemini API with key validation and logging
-const geminiApiKey = process.env.GEMINI_API_KEY || "AIzaSyC5T2TPQoUcyZa992JcffC3OMxYXgkXwus";
+// Initialize Gemini
+const geminiApiKey = process.env.GEMINI_API_KEY || "";
 const gemini = new GoogleGenerativeAI(geminiApiKey);
 
-// Log Gemini key status
 if (!process.env.GEMINI_API_KEY) {
-  console.warn("[Warning] GEMINI_API_KEY not found in environment. Falling back to default.");
+  console.warn("[Warning] GEMINI_API_KEY not found in environment. Please set it.");
 } else {
   const maskedKey = geminiApiKey.slice(0, 6) + "...";
   console.log(`[Gemini] API Key Loaded: ${maskedKey}`);
 }
 
-// Helper to check if the OpenAI API key is valid and has quota
-async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
-  try {
-    if (!process.env.OPENAI_API_KEY) {
-      return { valid: false, message: "OpenAI API key is not configured" };
+// ✅ Hugging Face endpoint
+export async function registerRoutes(app: Express): Promise<Server> {
+  const apiRouter = Router();
+
+  apiRouter.post("/huggingface", async (req: Request, res: Response) => {
+    const { model, prompt } = req.body;
+
+    if (!model || !prompt) {
+      return res.status(400).json({ error: "Model and prompt are required" });
     }
 
-    // Make a small test request to verify the API key works
-    await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{ role: "user", content: "test" }],
-      max_tokens: 5
-    });
+    try {
+      const output = await queryHuggingFace(model, prompt);
+      res.json({ output });
+    } catch (error) {
+      console.error("Hugging Face request failed:", error);
+      res.status(500).json({ error: "Failed to generate response from Hugging Face" });
+    }
+  });
 
-    return { valid: true };
-  } catch (error: any) {
-    console.error("OpenAI API key validation error:", error);
+  // (Your existing endpoints and logic continue below)
 
-    if (error?.code === 'insufficient_quota' || error?.status === 429) {
+  // Example: Check OpenAI key
+  async function checkOpenAIApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return { valid: false, message: "OpenAI API key is not configured" };
+      }
+
+      await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "test" }],
+        max_tokens: 5
+      });
+
+      return { valid: true };
+    } catch (error: any) {
+      console.error("OpenAI API key validation error:", error);
+
+      if (error?.code === 'insufficient_quota' || error?.status === 429) {
+        return {
+          valid: false,
+          message: "OpenAI API quota exceeded. Please check your API key billing details or try again later."
+        };
+      }
+
+      if (error?.status === 401) {
+        return {
+          valid: false,
+          message: "Invalid OpenAI API key. Please check your API key and try again."
+        };
+      }
+
       return {
         valid: false,
-        message: "OpenAI API quota exceeded. Please check your API key billing details or try again later."
+        message: `Error validating OpenAI API key: ${error?.message || "Unknown error"}`
       };
     }
-
-    if (error?.status === 401) {
-      return {
-        valid: false,
-        message: "Invalid OpenAI API key. Please check your API key and try again."
-      };
-    }
-
-    return {
-      valid: false,
-      message: `Error validating OpenAI API key: ${error?.message || "Unknown error"}`
-    };
   }
+
+  // Register API routes
+  app.use("/api", apiRouter);
+  return createServer(app);
 }
+
+
 
 // Helper to check if the Gemini API key is valid
 async function checkGeminiApiKeyStatus(): Promise<{ valid: boolean; message?: string }> {
