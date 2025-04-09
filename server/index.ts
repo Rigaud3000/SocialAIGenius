@@ -74,7 +74,6 @@ app.use((req, res, next) => {
 
   // ✅ FIX FOR WINDOWS: use "localhost" NOT "0.0.0.0"
   const port = parseInt(process.env.PORT || "10000", 10);
-  server.listen(port, "localhost", () => {
-    log(`✅ Server is running at http://localhost:${port}`);
-  });
-})();
+  server.listen(port, () => {
+  log(`✅ Server is running on http://localhost:${port}`);
+});
