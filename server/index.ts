@@ -76,13 +76,12 @@ app.use((req, res, next) => {
 
   // ✅ Server start
   const port = parseInt(process.env.PORT || "10000", 10);
-  server.listen(
-    {
-      port,
-      host: "localhost", // ✅ FIXED for Windows
-    },
-    () => {
-      log(`✅ Server is running on http://localhost:${port}`);
-    }
-  );
-})();
+server.listen(
+  {
+    port,
+    host: "localhost", // ✅ changed from 0.0.0.0 to localhost
+  },
+  () => {
+    log(`✅ Server is running on http://localhost:${port}`);
+  }
+);
