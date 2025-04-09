@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
+const port = parseInt(process.env.PORT || "3000");
 
 // ✅ Enable CORS for dev + prod frontend
 const allowedOrigins = [
@@ -57,24 +58,41 @@ app.use((req, res, next) => {
 
 // ✅ Async setup
 (async () => {
-  const server = await registerRoutes(app);
+  try {
+    const server = await registerRoutes(app);
 
-  // ✅ Global error handler
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    throw err;
-  });
+    // ✅ Global error handler
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      res.status(status).json({ message });
+      log(`❌ Error: ${status} - ${message}`);
+      if (status === 500) {
+        console.error(err.stack);
+      }
+    });
 
-  // ✅ Dev vs Prod setup
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    // ✅ Dev vs Prod setup
+    if (process.env.NODE_ENV === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    // ✅ Fixed server listening with proper error handling
+    server.listen(port, "0.0.0.0", () => {
+      log(`✅ Server is running on http://0.0.0.0:${port}`);
+    }).on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        log(`❌ Port ${port} is already in use`);
+      } else {
+        log(`❌ Server error: ${err.message}`);
+      }
+      process.exit(1);
+    });
+
+  } catch (err) {
+    log(`❌ Failed to start server: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
   }
-
-  // ✅ FIX FOR WINDOWS: use "localhost" NOT "0.0.0.0"
-server.listen(port, "0.0.0.0", () => {
-  log(`✅ Server is running on port ${port}`);
-});
+})();
