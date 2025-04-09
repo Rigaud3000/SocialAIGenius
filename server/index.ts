@@ -78,14 +78,13 @@ app.use((req, res, next) => {
   }
 
   // ✅ Start server with safe host for Windows
-  const port = parseInt(process.env.PORT || "10000", 10);
   server.listen(
-    {
-      port,
-      host: "localhost", // ✅ Changed from "0.0.0.0" to "localhost"
-    },
-    () => {
-      log(`✅ Server is running on http://localhost:${port}`);
-    }
-  );
-})();
+  {
+    port,
+    host: "localhost", // ✅ Change from "0.0.0.0" to "localhost"
+    reusePort: true,
+  },
+  () => {
+    log(`✅ Server is running on http://localhost:${port}`);
+  }
+);
